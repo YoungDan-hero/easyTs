@@ -53,7 +53,7 @@ var EasyTs = class {
     const cleanUrl = url.split("?")[0];
     const parts = cleanUrl.split("/").filter(Boolean);
     const processedParts = parts.map((part) => {
-      if (part.includes("${") || part.startsWith(":")) {
+      if (part.includes("${") || part.startsWith(":") || /^\d+$/.test(part)) {
         return "ById";
       }
       return part;

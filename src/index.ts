@@ -48,9 +48,11 @@ class EasyTs {
     
     // 替换动态参数为通用标识符
     const processedParts = parts.map(part => {
-      // 检测是否为动态参数 (例如: ${xxx} 或 :xxx)
-      if (part.includes('${') || part.startsWith(':')) {
-        return 'By' + 'Id';
+      // 检测是否为动态参数 (例如: ${xxx} 或 :xxx 或纯数字)
+      if (part.includes('${') || 
+          part.startsWith(':') || 
+          /^\d+$/.test(part)) {  // 添加对纯数字的检测
+        return 'ById';
       }
       return part;
     });
