@@ -54,30 +54,30 @@ easyTs.start();
 
 ### 3. 直接生成类型定义
 
-除了自动拦截 API 响应外，EasyTs 还提供了直接从数据生成 TypeScript 接口的功能：
+除了自动拦截 API 响应外，EasyTs 还提供了两种方式直接从数据生成 TypeScript 类型：
+
+#### 方式一：获取字符串形式的接口定义
 
 ```typescript
 const easyTs = createEasyTs();
-
-// 简单对象示例
-const userData = {
-  id: 1,
-  name: "张三",
-  age: 25,
-  isActive: true,
-};
-
 const userInterface = easyTs.generateInterface(userData, "IUser");
-console.log(userInterface);
-// 输出:
-// export interface IUser {
-//   id: number;
-//   name: string;
-//   age: number;
-//   isActive: boolean;
-// }
+```
 
-// 复杂嵌套对象示例
+#### 方式二：直接获取类型定义（推荐）
+
+```typescript
+import { createEasyTs, Type } from "@kiko-yd/easyts";
+
+const easyTs = createEasyTs();
+
+// 示例1：API 响应数据类型
+async function fetchUserData() {
+  const res = await axios.get("/api/user");
+  const userData = ref<Type<typeof res.data>>();
+  userData.value = res.data;
+}
+
+// 示例2：普通数据类型
 const orderData = {
   orderId: "ORDER001",
   customer: {
@@ -97,32 +97,22 @@ const orderData = {
   totalAmount: 99.9,
 };
 
-const orderInterface = easyTs.generateInterface(orderData, "IOrder");
-console.log(orderInterface);
-// 输出:
-// export interface ICustomerContact {
-//   email: string;
-//   phone: string;
-// }
-//
-// export interface ICustomer {
-//   name: string;
-//   contact: ICustomerContact;
-// }
-//
-// export interface IProductsItem {
-//   id: number;
-//   name: string;
-//   price: number;
-// }
-//
-// export interface IOrder {
-//   orderId: string;
-//   customer: ICustomer;
-//   products: IProductsItem[];
-//   totalAmount: number;
-// }
+// 直接在 ref 中使用
+const order = ref<Type<typeof orderData>>();
+
+// 在函数参数中使用
+function processOrder(data: Type<typeof orderData>) {
+  // ...
+}
 ```
+
+`Type` 的特点：
+
+- 使用方式极其简单：`Type<typeof yourData>`
+- 自动处理嵌套对象和数组
+- 完整保留原始数据的类型信息
+- 可以与 Vue 的 ref/reactive 完美配合
+- 支持在任何需要类型定义的地方使用
 
 generateInterface 方法支持：
 

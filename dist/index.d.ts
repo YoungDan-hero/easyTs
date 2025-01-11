@@ -12,6 +12,9 @@ interface EasyTsConfig {
      */
     axios?: AxiosInstance;
 }
+type TypeFromData<T> = {
+    [K in keyof T]: T[K] extends Array<infer U> ? Array<TypeFromData<U>> : T[K] extends object ? TypeFromData<T[K]> : T[K];
+};
 declare class EasyTs {
     private axios;
     private typeCache;
@@ -44,7 +47,15 @@ declare class EasyTs {
      * 获取axios实例
      */
     getAxiosInstance(): AxiosInstance;
+    /**
+     * 直接获取数据的类型定义
+     * @template T 数据类型
+     * @param data 要生成类型的数据
+     * @returns 类型接口
+     */
+    type<T>(data: T): TypeFromData<T>;
 }
+type Type<T> = TypeFromData<T>;
 declare const createEasyTs: (config?: EasyTsConfig) => EasyTs;
 
-export { createEasyTs };
+export { Type, TypeFromData, createEasyTs };

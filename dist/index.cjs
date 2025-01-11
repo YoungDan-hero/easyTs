@@ -180,6 +180,15 @@ ${properties}
   getAxiosInstance() {
     return this.axios;
   }
+  /**
+   * 直接获取数据的类型定义
+   * @template T 数据类型
+   * @param data 要生成类型的数据
+   * @returns 类型接口
+   */
+  type(data) {
+    return {};
+  }
 };
 var createEasyTs = (config) => {
   return new EasyTs(config);
