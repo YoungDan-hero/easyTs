@@ -1,0 +1,48 @@
+{
+  "name": "@kiko-yd/easyts",
+  "version": "1.0.0",
+  "description": "Automatic TypeScript interface generator for Vue3 projects",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./vite-plugin-easyts": {
+      "import": "./dist/vite-plugin-easyts.js",
+      "require": "./dist/vite-plugin-easyts.cjs",
+      "types": "./dist/vite-plugin-easyts.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "watch": "tsup --watch",
+    "test": "jest",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "typescript",
+    "vue3",
+    "api",
+    "interface",
+    "generator"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@vitejs/plugin-vue": "^4.6.2",
+    "axios": "^1.0.0",
+    "tsup": "^7.2.0",
+    "typescript": "^5.0.0",
+    "vite": "^4.0.0"
+  },
+  "peerDependencies": {
+    "axios": ">=1.0.0",
+    "vite": ">=4.0.0"
+  }
+}
