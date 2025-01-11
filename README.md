@@ -17,6 +17,22 @@
 npm install @kiko-yd/easyts
 ```
 
+## ⚙️ Vite 插件配置
+
+在 `vite.config.ts` 中添加插件：
+
+```typescript
+import { defineConfig } from "vite";
+import { vitePluginEasyTs } from "@kiko-yd/easyts/vite-plugin-easyts";
+
+export default defineConfig({
+  plugins: [
+    // ... 其他插件
+    vitePluginEasyTs(),
+  ],
+});
+```
+
 ## 🔨 核心功能
 
 ### 1. createEasyTs
@@ -138,22 +154,6 @@ export interface IGeneratedInterface {
 - 需要快速查看数据结构
 - 临时生成接口定义
 - 作为其他类型生成函数的基础
-
-## ⚙️ Vite 插件配置
-
-在 `vite.config.ts` 中添加插件：
-
-```typescript
-import { defineConfig } from "vite";
-import { vitePluginEasyTs } from "@kiko-yd/easyts/vite-plugin-easyts";
-
-export default defineConfig({
-  plugins: [
-    // ... 其他插件
-    vitePluginEasyTs(),
-  ],
-});
-```
 
 ## 🌰 最佳实践
 
