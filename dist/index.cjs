@@ -54,10 +54,21 @@ var EasyTs = class {
     return `I${name}Response`;
   }
   /**
+   * 根据传入的数据生成 TypeScript 接口定义
+   * @param data 要生成接口的数据
+   * @param interfaceName 可选的接口名称，如果不提供将生成默认名称
+   * @returns 生成的 TypeScript 接口定义字符串
+   */
+  generateInterface(data, interfaceName) {
+    const name = interfaceName || "IGeneratedInterface";
+    return this.generateTypeDefinition(data, name);
+  }
+  /**
    * 生成TypeScript接口定义
    */
   generateTypeDefinition(data, interfaceName) {
     const seen = /* @__PURE__ */ new Set();
+    let interfaces = [];
     const generateType = (value, name) => {
       if (seen.has(value)) {
         return "any";
@@ -67,35 +78,51 @@ var EasyTs = class {
       if (Array.isArray(value)) {
         if (value.length === 0)
           return "any[]";
-        return `${generateType(value[0], name)}[]`;
+        const itemType = generateType(value[0], `${name}Item`);
+        return `${itemType}[]`;
       }
       switch (typeof value) {
         case "string":
           return "string";
         case "number":
-          return "number";
+          return Number.isInteger(value) ? "number" : "number";
         case "boolean":
           return "boolean";
         case "object": {
           seen.add(value);
-          const properties = Object.entries(value).map(
-            ([key, val]) => `  ${key}: ${generateType(
-              val,
-              `${name}${key.charAt(0).toUpperCase()}${key.slice(1)}`
-            )};`
-          ).join("\n");
-          return `{
+          const subInterfaceName = `I${name}`;
+          if (Object.keys(value).length > 0) {
+            const properties = Object.entries(value).map(([key, val]) => {
+              const propType = generateType(
+                val,
+                `${name}${key.charAt(0).toUpperCase()}${key.slice(1)}`
+              );
+              return `  ${key}: ${propType};`;
+            }).join("\n");
+            if (name !== interfaceName.replace(/^I/, "")) {
+              interfaces.push(
+                `export interface ${subInterfaceName} {
+${properties}
+}`
+              );
+              return subInterfaceName;
+            } else {
+              return `{
 ${properties}
 }`;
+            }
+          }
+          return "{}";
         }
         default:
           return "any";
       }
     };
-    return `export interface ${interfaceName} ${generateType(
+    const mainInterface = `export interface ${interfaceName} ${generateType(
       data,
-      interfaceName
+      interfaceName.replace(/^I/, "")
     )}`;
+    return [...interfaces, mainInterface].join("\n\n");
   }
   /**
    * 保存类型定义

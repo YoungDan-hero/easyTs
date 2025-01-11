@@ -13,7 +13,7 @@
 ## 📦 安装
 
 ```bash
-npm install easyts
+npm install @kiko-yd/easyts
 ```
 
 ## 🔨 使用方法
@@ -25,7 +25,7 @@ npm install easyts
 ```typescript
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
-import { vitePluginEasyTs } from "easyts/vite-plugin-easyts";
+import { vitePluginEasyTs } from "@kiko-yd/easyts/vite-plugin-easyts";
 
 export default defineConfig({
   plugins: [vue(), vitePluginEasyTs()],
@@ -35,7 +35,7 @@ export default defineConfig({
 ### 2. 在代码中使用
 
 ```typescript
-import { createEasyTs } from "easyts";
+import { createEasyTs } from "@kiko-yd/easyts";
 
 // 基本使用
 const easyTs = createEasyTs();
@@ -52,7 +52,91 @@ const easyTs = createEasyTs({
 easyTs.start();
 ```
 
-### 3. 类型文件生成
+### 3. 直接生成类型定义
+
+除了自动拦截 API 响应外，EasyTs 还提供了直接从数据生成 TypeScript 接口的功能：
+
+```typescript
+const easyTs = createEasyTs();
+
+// 简单对象示例
+const userData = {
+  id: 1,
+  name: "张三",
+  age: 25,
+  isActive: true,
+};
+
+const userInterface = easyTs.generateInterface(userData, "IUser");
+console.log(userInterface);
+// 输出:
+// export interface IUser {
+//   id: number;
+//   name: string;
+//   age: number;
+//   isActive: boolean;
+// }
+
+// 复杂嵌套对象示例
+const orderData = {
+  orderId: "ORDER001",
+  customer: {
+    name: "张三",
+    contact: {
+      email: "zhangsan@example.com",
+      phone: "13800138000",
+    },
+  },
+  products: [
+    {
+      id: 1,
+      name: "商品1",
+      price: 99.9,
+    },
+  ],
+  totalAmount: 99.9,
+};
+
+const orderInterface = easyTs.generateInterface(orderData, "IOrder");
+console.log(orderInterface);
+// 输出:
+// export interface ICustomerContact {
+//   email: string;
+//   phone: string;
+// }
+//
+// export interface ICustomer {
+//   name: string;
+//   contact: ICustomerContact;
+// }
+//
+// export interface IProductsItem {
+//   id: number;
+//   name: string;
+//   price: number;
+// }
+//
+// export interface IOrder {
+//   orderId: string;
+//   customer: ICustomer;
+//   products: IProductsItem[];
+//   totalAmount: number;
+// }
+```
+
+generateInterface 方法支持：
+
+- 自动生成嵌套接口
+- 智能处理数组类型
+- 自动处理循环引用
+- 生成清晰的类型层次结构
+
+**参数说明：**
+
+- `data: any` - 要生成接口的数据对象
+- `interfaceName?: string` - 可选的接口名称，如果不提供则默认为 "IGeneratedInterface"
+
+### 4. 类型文件生成
 
 当你发起 API 请求时，EasyTs 会自动：
 
@@ -72,7 +156,7 @@ export interface UserInfoResponse {
 }
 ```
 
-### 4. 使用生成的类型
+### 5. 使用生成的类型
 
 ```typescript
 // 导入生成的类型

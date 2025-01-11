@@ -45,51 +45,82 @@ class EasyTs {
   }
 
   /**
+   * 根据传入的数据生成 TypeScript 接口定义
+   * @param data 要生成接口的数据
+   * @param interfaceName 可选的接口名称，如果不提供将生成默认名称
+   * @returns 生成的 TypeScript 接口定义字符串
+   */
+  public generateInterface(data: any, interfaceName?: string): string {
+    const name = interfaceName || "IGeneratedInterface";
+    return this.generateTypeDefinition(data, name);
+  }
+
+  /**
    * 生成TypeScript接口定义
    */
   private generateTypeDefinition(data: any, interfaceName: string): string {
     const seen = new Set();
+    let interfaces: string[] = [];
 
     const generateType = (value: any, name: string): string => {
       if (seen.has(value)) {
-        return "any";
+        return "any"; // 避免循环引用
       }
 
       if (value === null) return "null";
       if (Array.isArray(value)) {
         if (value.length === 0) return "any[]";
-        return `${generateType(value[0], name)}[]`;
+        const itemType = generateType(value[0], `${name}Item`);
+        return `${itemType}[]`;
       }
 
       switch (typeof value) {
         case "string":
           return "string";
         case "number":
-          return "number";
+          return Number.isInteger(value) ? "number" : "number";
         case "boolean":
           return "boolean";
         case "object": {
           seen.add(value);
-          const properties = Object.entries(value)
-            .map(
-              ([key, val]) =>
-                `  ${key}: ${generateType(
+          const subInterfaceName = `I${name}`;
+
+          // 为复杂对象生成子接口
+          if (Object.keys(value).length > 0) {
+            const properties = Object.entries(value)
+              .map(([key, val]) => {
+                const propType = generateType(
                   val,
                   `${name}${key.charAt(0).toUpperCase()}${key.slice(1)}`
-                )};`
-            )
-            .join("\n");
-          return `{\n${properties}\n}`;
+                );
+                return `  ${key}: ${propType};`;
+              })
+              .join("\n");
+
+            // 只有当对象有属性时才生成子接口
+            if (name !== interfaceName.replace(/^I/, "")) {
+              interfaces.push(
+                `export interface ${subInterfaceName} {\n${properties}\n}`
+              );
+              return subInterfaceName;
+            } else {
+              return `{\n${properties}\n}`;
+            }
+          }
+          return "{}";
         }
         default:
           return "any";
       }
     };
 
-    return `export interface ${interfaceName} ${generateType(
+    const mainInterface = `export interface ${interfaceName} ${generateType(
       data,
-      interfaceName
+      interfaceName.replace(/^I/, "")
     )}`;
+
+    // 返回所有生成的接口定义，包括子接口
+    return [...interfaces, mainInterface].join("\n\n");
   }
 
   /**

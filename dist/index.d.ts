@@ -22,6 +22,13 @@ declare class EasyTs {
      */
     private generateInterfaceName;
     /**
+     * 根据传入的数据生成 TypeScript 接口定义
+     * @param data 要生成接口的数据
+     * @param interfaceName 可选的接口名称，如果不提供将生成默认名称
+     * @returns 生成的 TypeScript 接口定义字符串
+     */
+    generateInterface(data: any, interfaceName?: string): string;
+    /**
      * 生成TypeScript接口定义
      */
     private generateTypeDefinition;
