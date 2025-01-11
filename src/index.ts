@@ -25,12 +25,33 @@ export type Type<T> = {
 
 class EasyTs {
   private axios: AxiosInstance;
-  private typeCache: Set<string> = new Set();
+  private typeCache: Map<string, string> = new Map();
   private outputDir: string;
 
   constructor(config: EasyTsConfig = {}) {
     this.axios = config.axios || axios.create();
     this.outputDir = config.outputDir || "EasyTsApi";
+  }
+
+  /**
+   * 计算数据的哈希值，用于检测变化
+   */
+  private calculateHash(data: any): string {
+    return JSON.stringify(data);
+  }
+
+  /**
+   * 检查数据是否发生变化
+   */
+  private hasDataChanged(interfaceName: string, newData: any): boolean {
+    const newHash = this.calculateHash(newData);
+    const oldHash = this.typeCache.get(interfaceName);
+    
+    if (oldHash !== newHash) {
+      this.typeCache.set(interfaceName, newHash);
+      return true;
+    }
+    return false;
   }
 
   /**
@@ -196,14 +217,15 @@ class EasyTs {
             response.config.url || '',
             response.config.method || 'get'
           );
-          const typeDefinition = this.generateTypeDefinition(
-            response.data,
-            interfaceName
-          );
-
-          if (!this.typeCache.has(interfaceName)) {
+          
+          // 检查数据是否发生变化
+          if (!this.typeCache.has(interfaceName) || this.hasDataChanged(interfaceName, response.data)) {
+            const typeDefinition = this.generateTypeDefinition(
+              response.data,
+              interfaceName
+            );
             await this.saveTypeDefinition(interfaceName, typeDefinition);
-            this.typeCache.add(interfaceName);
+            console.log(`[EasyTs] Updated type definition for ${interfaceName}`);
           }
         } catch (error) {
           console.error('EasyTs: Error generating type definition:', error);
@@ -212,6 +234,26 @@ class EasyTs {
       },
       (error) => Promise.reject(error)
     );
+  }
+
+  /**
+   * 强制更新指定接口的类型定义
+   * @param url 接口地址
+   * @param method 请求方法
+   * @param data 接口返回数据
+   */
+  public async forceUpdate(url: string, method: string = 'get', data: any): Promise<void> {
+    try {
+      const interfaceName = this.generateInterfaceName(url, method);
+      const typeDefinition = this.generateTypeDefinition(data, interfaceName);
+      await this.saveTypeDefinition(interfaceName, typeDefinition);
+      // 更新缓存
+      this.typeCache.set(interfaceName, this.calculateHash(data));
+      console.log(`[EasyTs] Force updated type definition for ${interfaceName}`);
+    } catch (error) {
+      console.error('EasyTs: Error force updating type definition:', error);
+      throw error;
+    }
   }
 
   /**
