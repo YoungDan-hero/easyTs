@@ -1,14 +1,15 @@
 # EasyTs
 
-一个为 Vue3 + TypeScript 项目设计的自动类型生成工具。它可以自动拦截 API 响应并生成对应的 TypeScript 接口定义，提高开发效率。
+一个为 TypeScript 项目设计的智能类型生成工具，可以自动拦截 API 响应并生成对应的 TypeScript 接口定义，极大提升开发效率。
 
 ## ✨ 特性
 
 - 🚀 自动拦截 API 响应并生成 TypeScript 接口定义
-- 📁 自动在 src 目录下管理类型文件
-- 🔄 智能命名转换
+- 📁 智能的类型文件管理系统
+- 🔄 智能命名转换和类型推导
 - 🔌 零侵入性集成
 - 💪 完全类型安全
+- 🎯 支持多种类型生成方式
 
 ## 📦 安装
 
@@ -16,23 +17,11 @@
 npm install @kiko-yd/easyts
 ```
 
-## 🔨 使用方法
+## 🔨 核心功能
 
-### 1. 配置 Vite
+### 1. createEasyTs
 
-在你的 `vite.config.ts` 中添加插件：
-
-```typescript
-import { defineConfig } from "vite";
-import vue from "@vitejs/plugin-vue";
-import { vitePluginEasyTs } from "@kiko-yd/easyts/vite-plugin-easyts";
-
-export default defineConfig({
-  plugins: [vue(), vitePluginEasyTs()],
-});
-```
-
-### 2. 在代码中使用
+创建 EasyTs 实例，用于自动拦截 API 响应并生成类型定义。
 
 ```typescript
 import { createEasyTs } from "@kiko-yd/easyts";
@@ -41,139 +30,174 @@ import { createEasyTs } from "@kiko-yd/easyts";
 const easyTs = createEasyTs();
 easyTs.start();
 
-// 或者使用自定义配置
+// 高级配置
 const easyTs = createEasyTs({
-  // 自定义输出目录（相对于src目录）
-  outputDir: "types/api",
-  // 使用自定义的 axios 实例
-  axios: yourAxiosInstance,
+  outputDir: "types/api", // 自定义输出目录
+  axios: customAxios, // 自定义 axios 实例
 });
-
-easyTs.start();
 ```
 
-### 3. 直接生成类型定义
+使用场景：
 
-除了自动拦截 API 响应外，EasyTs 还提供了两种方式直接从数据生成 TypeScript 类型：
+- 在项目入口文件中初始化，自动监听所有 API 请求
+- 需要自定义类型文件存储位置
+- 使用自定义的 axios 实例时
 
-#### 方式一：获取字符串形式的接口定义
+### 2. createTypeInCurrentDir
+
+在当前文件目录下快速生成类型定义文件。
 
 ```typescript
-const easyTs = createEasyTs();
-const userInterface = easyTs.generateInterface(userData, "IUser");
+import { createTypeInCurrentDir } from "@kiko-yd/easyts";
+
+// 基本使用
+const data = await fetchData();
+await createTypeInCurrentDir(data, "UserTypes", import.meta.url);
+
+// 导入生成的类型
+import type { IGeneratedInterface } from "./UserTypes";
 ```
 
-#### 方式二：直接获取类型定义（推荐）
+参数说明：
+
+- `data: any` - 需要生成类型的数据
+- `fileName: string` - 类型文件名（无需扩展名）
+- `filePath: string` - 当前文件路径（使用 import.meta.url）
+
+使用场景：
+
+- 需要在组件/模块同级目录管理类型定义
+- 快速为已有数据生成类型定义
+- 希望类型文件与业务代码紧密关联
+
+### 3. createTypeDefinition
+
+将接口定义字符串保存为类型定义文件。
 
 ```typescript
-import { createEasyTs, Type } from "@kiko-yd/easyts";
+import { createTypeDefinition } from "@kiko-yd/easyts";
 
-const easyTs = createEasyTs();
-
-// 示例1：API 响应数据类型
-async function fetchUserData() {
-  const res = await axios.get("/api/user");
-  const userData = ref<Type<typeof res.data>>();
-  userData.value = res.data;
-}
-
-// 示例2：普通数据类型
-const orderData = {
-  orderId: "ORDER001",
-  customer: {
-    name: "张三",
-    contact: {
-      email: "zhangsan@example.com",
-      phone: "13800138000",
-    },
-  },
-  products: [
-    {
-      id: 1,
-      name: "商品1",
-      price: 99.9,
-    },
-  ],
-  totalAmount: 99.9,
-};
-
-// 直接在 ref 中使用
-const order = ref<Type<typeof orderData>>();
-
-// 在函数参数中使用
-function processOrder(data: Type<typeof orderData>) {
-  // ...
-}
-```
-
-`Type` 的特点：
-
-- 使用方式极其简单：`Type<typeof yourData>`
-- 自动处理嵌套对象和数组
-- 完整保留原始数据的类型信息
-- 可以与 Vue 的 ref/reactive 完美配合
-- 支持在任何需要类型定义的地方使用
-
-generateInterface 方法支持：
-
-- 自动生成嵌套接口
-- 智能处理数组类型
-- 自动处理循环引用
-- 生成清晰的类型层次结构
-
-**参数说明：**
-
-- `data: any` - 要生成接口的数据对象
-- `interfaceName?: string` - 可选的接口名称，如果不提供则默认为 "IGeneratedInterface"
-
-### 4. 类型文件生成
-
-当你发起 API 请求时，EasyTs 会自动：
-
-1. 拦截响应数据
-2. 生成对应的 TypeScript 接口
-3. 保存到指定目录（默认为 `src/EasyTsApi`）
-
-例如，请求 `/api/user/info` 会生成：
-
-```typescript
-// src/EasyTsApi/UserInfoResponse.ts
-export interface UserInfoResponse {
+// 基本使用
+const interfaceString = `
+export interface UserData {
   id: number;
   name: string;
-  email: string;
-  // ... 根据实际响应自动生成
+  age: number;
+}`;
+
+await createTypeDefinition(interfaceString, "UserTypes");
+// 生成文件：types/UserTypes.d.ts
+```
+
+参数说明：
+
+- `interfaceString: string` - 接口定义字符串
+- `fileName?: string` - 可选的文件名，默认为 "types"
+
+使用场景：
+
+- 已有接口定义需要保存为文件
+- 需要将多个接口合并到一个文件
+- 手动编写的接口需要规范化存储
+
+### 4. getInterface
+
+直接从数据生成 TypeScript 接口定义字符串。
+
+```typescript
+import { getInterface } from "@kiko-yd/easyts";
+
+const data = {
+  user: {
+    name: "张三",
+    age: 25,
+    hobbies: ["读书", "游戏"],
+  },
+  status: "active",
+};
+
+const interfaceString = getInterface(data);
+console.log(interfaceString);
+```
+
+输出示例：
+
+```typescript
+export interface IGeneratedInterface {
+  user: {
+    name: string;
+    age: number;
+    hobbies: string[];
+  };
+  status: string;
 }
 ```
 
-### 5. 使用生成的类型
+使用场景：
+
+- 需要快速查看数据结构
+- 临时生成接口定义
+- 作为其他类型生成函数的基础
+
+## ⚙️ Vite 插件配置
+
+在 `vite.config.ts` 中添加插件：
 
 ```typescript
-// 导入生成的类型
-import { UserInfoResponse } from "./EasyTsApi";
+import { defineConfig } from "vite";
+import { vitePluginEasyTs } from "@kiko-yd/easyts/vite-plugin-easyts";
 
-// 在代码中使用
-const getUserInfo = async (): Promise<UserInfoResponse> => {
-  const response = await axios.get("/api/user/info");
-  return response.data;
-};
+export default defineConfig({
+  plugins: [
+    // ... 其他插件
+    vitePluginEasyTs(),
+  ],
+});
 ```
 
-## ⚙️ 配置选项
+## 🌰 最佳实践
 
-| 选项      | 类型          | 默认值      | 说明                           |
-| --------- | ------------- | ----------- | ------------------------------ |
-| outputDir | string        | 'EasyTsApi' | 类型文件输出目录（相对于 src） |
-| axios     | AxiosInstance | -           | 自定义的 axios 实例            |
+### 1. API 请求类型生成
 
+```typescript
+// api/user.ts
+import { createEasyTs } from "@kiko-yd/easyts";
+
+const easyTs = createEasyTs();
+const axios = easyTs.getAxiosInstance();
+
+// 自动生成类型并使用
+export async function getUserInfo() {
+  const response = await axios.get("/api/user/info");
+  return response.data; // 类型会自动生成到 src/EasyTsApi/UserInfoResponse.ts
+}
+```
+
+### 2. 组件数据类型生成
+
+```typescript
+// components/UserCard.vue
+import { createTypeInCurrentDir } from "@kiko-yd/easyts";
+
+// 生成类型
+const mockData = {
+  title: "用户卡片",
+  user: { name: "张三", avatar: "url" },
+};
+
+await createTypeInCurrentDir(mockData, "UserCardTypes", import.meta.url);
+
+// 使用生成的类型
+import type { IGeneratedInterface as UserCardProps } from "./UserCardTypes";
 ```
 
 ## 📝 注意事项
 
-1. 确保你的项目中有 `src` 目录
-2. 确保 `src` 目录有写入权限
-3. 建议将生成的类型目录添加到版本控制中
-4. 如果使用自定义的 axios 实例，确保在调用 `start()` 之前完成所有配置
+1. 确保项目中有 `src` 目录且具有写入权限
+2. `createTypeInCurrentDir` 必须使用 `import.meta.url` 作为第三个参数
+3. 生成的类型文件建议加入版本控制
+4. 使用自定义 axios 实例时，确保在 `start()` 前完成配置
+5. 类型文件名避免使用特殊字符
 
 ## 🤝 贡献
 
@@ -182,4 +206,7 @@ const getUserInfo = async (): Promise<UserInfoResponse> => {
 ## 📄 许可
 
 MIT
+
+```
+
 ```

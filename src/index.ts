@@ -15,11 +15,11 @@ interface EasyTsConfig {
 }
 
 // 类型定义
-export type TypeFromData<T> = {
+export type Type<T> = {
   [K in keyof T]: T[K] extends Array<infer U>
-    ? Array<TypeFromData<U>>
+    ? Array<Type<U>>
     : T[K] extends object
-    ? TypeFromData<T[K]>
+    ? Type<T[K]>
     : T[K];
 };
 
@@ -202,14 +202,100 @@ class EasyTs {
    * @param data 要生成类型的数据
    * @returns 类型接口
    */
-  public type<T>(data: T): TypeFromData<T> {
-    return {} as TypeFromData<T>;
+  public type<T>(data: T): Type<T> {
+    return {} as Type<T>;
   }
 }
 
-// 导出工具类型
-export type Type<T> = TypeFromData<T>;
+/**
+ * 直接生成接口定义
+ * @param data 要生成接口的数据
+ * @returns 接口定义字符串
+ */
+export function getInterface(data: any): string {
+  const easyTs = new EasyTs();
+  return easyTs.generateInterface(data);
+}
 
 export const createEasyTs = (config?: EasyTsConfig): EasyTs => {
   return new EasyTs(config);
 };
+
+/**
+ * 将接口定义字符串转换为可用的类型定义文件
+ * @param interfaceString 接口定义字符串
+ * @param fileName 文件名（可选，默认为 'types'）
+ * @returns Promise<string> 返回生成的类型文件路径
+ */
+export async function createTypeDefinition(
+  interfaceString: string,
+  fileName: string = "types"
+): Promise<string> {
+  try {
+    const response = await fetch("/__easyts_save", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        interfaceName: fileName,
+        content: interfaceString,
+        outputDir: "types",
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to create type definition");
+    }
+
+    return `types/${fileName}.d.ts`;
+  } catch (error) {
+    console.error("Error creating type definition:", error);
+    throw error;
+  }
+}
+
+/**
+ * 快速从数据生成类型定义并保存到当前目录
+ * @param data 要生成类型的数据
+ * @param fileName 保存的文件名（不需要扩展名）
+ * @param filePath 当前文件的路径（使用 import.meta.url）
+ * @returns Promise<string> 返回生成的类型文件路径
+ */
+export async function createTypeInCurrentDir(
+  data: any,
+  fileName: string,
+  filePath: string
+): Promise<string> {
+  const interfaceString = getInterface(data);
+
+  try {
+    // 将 URL 转换为相对路径
+    const fileUrl = new URL(filePath);
+    const relativePath = fileUrl.pathname;
+
+    const response = await fetch("/__easyts_save", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        interfaceName: fileName,
+        content: interfaceString,
+        outputDir: ".",
+        createInCurrentDir: true,
+        currentFilePath: relativePath,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to create type definition");
+    }
+
+    const result = await response.json();
+    return result.path;
+  } catch (error) {
+    console.error("Error creating type definition:", error);
+    throw error;
+  }
+}

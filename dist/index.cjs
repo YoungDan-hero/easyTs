@@ -30,7 +30,10 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // src/index.ts
 var src_exports = {};
 __export(src_exports, {
-  createEasyTs: () => createEasyTs
+  createEasyTs: () => createEasyTs,
+  createTypeDefinition: () => createTypeDefinition,
+  createTypeInCurrentDir: () => createTypeInCurrentDir,
+  getInterface: () => getInterface
 });
 module.exports = __toCommonJS(src_exports);
 var import_axios = __toESM(require("axios"), 1);
@@ -190,11 +193,68 @@ ${properties}
     return {};
   }
 };
+function getInterface(data) {
+  const easyTs = new EasyTs();
+  return easyTs.generateInterface(data);
+}
 var createEasyTs = (config) => {
   return new EasyTs(config);
 };
+async function createTypeDefinition(interfaceString, fileName = "types") {
+  try {
+    const response = await fetch("/__easyts_save", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        interfaceName: fileName,
+        content: interfaceString,
+        outputDir: "types"
+      })
+    });
+    if (!response.ok) {
+      throw new Error("Failed to create type definition");
+    }
+    return `types/${fileName}.d.ts`;
+  } catch (error) {
+    console.error("Error creating type definition:", error);
+    throw error;
+  }
+}
+async function createTypeInCurrentDir(data, fileName, filePath) {
+  const interfaceString = getInterface(data);
+  try {
+    const fileUrl = new URL(filePath);
+    const relativePath = fileUrl.pathname;
+    const response = await fetch("/__easyts_save", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        interfaceName: fileName,
+        content: interfaceString,
+        outputDir: ".",
+        createInCurrentDir: true,
+        currentFilePath: relativePath
+      })
+    });
+    if (!response.ok) {
+      throw new Error("Failed to create type definition");
+    }
+    const result = await response.json();
+    return result.path;
+  } catch (error) {
+    console.error("Error creating type definition:", error);
+    throw error;
+  }
+}
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
-  createEasyTs
+  createEasyTs,
+  createTypeDefinition,
+  createTypeInCurrentDir,
+  getInterface
 });
 //# sourceMappingURL=index.cjs.map

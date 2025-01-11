@@ -6,6 +6,8 @@ interface TypeDefinition {
   interfaceName: string;
   content: string;
   outputDir?: string;
+  createInCurrentDir?: boolean;
+  currentFilePath?: string;
 }
 
 export function vitePluginEasyTs(): Plugin {
@@ -15,7 +17,6 @@ export function vitePluginEasyTs(): Plugin {
     name: "vite-plugin-easyts",
     configureServer(server) {
       projectRoot = server.config.root;
-      console.log("Project root:", projectRoot); // 调试日志
 
       // 注册自定义路由处理类型定义的保存
       server.middlewares.use("/__easyts_save", async (req, res) => {
@@ -31,54 +32,63 @@ export function vitePluginEasyTs(): Plugin {
                 interfaceName,
                 content,
                 outputDir = "EasyTsApi",
+                createInCurrentDir = false,
+                currentFilePath = "",
               }: TypeDefinition = JSON.parse(body);
 
-              // 使用 Vite 的项目根目录
-              const srcDir = path.join(projectRoot, "src");
-              console.log("Src directory:", srcDir); // 调试日志
+              let targetDir: string;
+              let filePath: string;
 
-              if (!fs.existsSync(srcDir)) {
-                throw new Error(`src directory not found in ${projectRoot}`);
+              if (createInCurrentDir && currentFilePath) {
+                // 如果指定了在当前目录创建，使用当前文件的目录
+                targetDir = path.dirname(
+                  path.join(projectRoot, currentFilePath)
+                );
+                filePath = path.join(targetDir, `${interfaceName}.d.ts`);
+              } else {
+                // 否则使用默认的 src/outputDir 目录
+                const srcDir = path.join(projectRoot, "src");
+                if (!fs.existsSync(srcDir)) {
+                  throw new Error(`src directory not found in ${projectRoot}`);
+                }
+                targetDir = path.join(srcDir, outputDir);
+                filePath = path.join(targetDir, `${interfaceName}.ts`);
               }
 
-              // 在src目录下创建输出目录
-              const fullOutputDir = path.join(srcDir, outputDir);
-              console.log("Output directory:", fullOutputDir); // 调试日志
-
-              // 确保输出目录存在
-              if (!fs.existsSync(fullOutputDir)) {
-                fs.mkdirSync(fullOutputDir, { recursive: true });
+              // 确保目标目录存在
+              if (!fs.existsSync(targetDir)) {
+                fs.mkdirSync(targetDir, { recursive: true });
               }
 
               // 保存类型定义文件
-              const filePath = path.join(fullOutputDir, `${interfaceName}.ts`);
               fs.writeFileSync(filePath, content);
-              console.log("Type definition file:", filePath); // 调试日志
 
-              // 更新 index.ts
-              const indexPath = path.join(fullOutputDir, "index.ts");
-              const exportStatement = `export * from './${interfaceName}';\n`;
+              // 只有在非当前目录模式下才更新 index.ts
+              if (!createInCurrentDir) {
+                const indexPath = path.join(targetDir, "index.ts");
+                const exportStatement = `export * from './${interfaceName}';\n`;
 
-              if (!fs.existsSync(indexPath)) {
-                fs.writeFileSync(
-                  indexPath,
-                  "// Auto-generated type definitions\n"
-                );
+                if (!fs.existsSync(indexPath)) {
+                  fs.writeFileSync(
+                    indexPath,
+                    "// Auto-generated type definitions\n"
+                  );
+                }
+
+                const indexContent = fs.readFileSync(indexPath, "utf-8");
+                if (!indexContent.includes(exportStatement)) {
+                  fs.appendFileSync(indexPath, exportStatement);
+                }
               }
 
-              const indexContent = fs.readFileSync(indexPath, "utf-8");
-              if (!indexContent.includes(exportStatement)) {
-                fs.appendFileSync(indexPath, exportStatement);
-              }
-
-              const relativePath = path.relative(srcDir, filePath);
-              console.log(`✨ Generated type definition: src/${relativePath}`);
+              const relativePath = path.relative(projectRoot, filePath);
+              console.log(`✨ Generated type definition: ${relativePath}`);
 
               res.statusCode = 200;
               res.end(
                 JSON.stringify({
                   success: true,
-                  path: `src/${relativePath}`,
+                  path: relativePath,
                 })
               );
             } catch (error) {

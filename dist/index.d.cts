@@ -12,8 +12,8 @@ interface EasyTsConfig {
      */
     axios?: AxiosInstance;
 }
-type TypeFromData<T> = {
-    [K in keyof T]: T[K] extends Array<infer U> ? Array<TypeFromData<U>> : T[K] extends object ? TypeFromData<T[K]> : T[K];
+type Type<T> = {
+    [K in keyof T]: T[K] extends Array<infer U> ? Array<Type<U>> : T[K] extends object ? Type<T[K]> : T[K];
 };
 declare class EasyTs {
     private axios;
@@ -53,9 +53,29 @@ declare class EasyTs {
      * @param data 要生成类型的数据
      * @returns 类型接口
      */
-    type<T>(data: T): TypeFromData<T>;
+    type<T>(data: T): Type<T>;
 }
-type Type<T> = TypeFromData<T>;
+/**
+ * 直接生成接口定义
+ * @param data 要生成接口的数据
+ * @returns 接口定义字符串
+ */
+declare function getInterface(data: any): string;
 declare const createEasyTs: (config?: EasyTsConfig) => EasyTs;
+/**
+ * 将接口定义字符串转换为可用的类型定义文件
+ * @param interfaceString 接口定义字符串
+ * @param fileName 文件名（可选，默认为 'types'）
+ * @returns Promise<string> 返回生成的类型文件路径
+ */
+declare function createTypeDefinition(interfaceString: string, fileName?: string): Promise<string>;
+/**
+ * 快速从数据生成类型定义并保存到当前目录
+ * @param data 要生成类型的数据
+ * @param fileName 保存的文件名（不需要扩展名）
+ * @param filePath 当前文件的路径（使用 import.meta.url）
+ * @returns Promise<string> 返回生成的类型文件路径
+ */
+declare function createTypeInCurrentDir(data: any, fileName: string, filePath: string): Promise<string>;
 
-export { Type, TypeFromData, createEasyTs };
+export { Type, createEasyTs, createTypeDefinition, createTypeInCurrentDir, getInterface };

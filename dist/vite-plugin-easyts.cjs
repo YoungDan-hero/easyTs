@@ -41,7 +41,6 @@ function vitePluginEasyTs() {
     name: "vite-plugin-easyts",
     configureServer(server) {
       projectRoot = server.config.root;
-      console.log("Project root:", projectRoot);
       server.middlewares.use("/__easyts_save", async (req, res) => {
         if (req.method === "POST") {
           let body = "";
@@ -53,41 +52,51 @@ function vitePluginEasyTs() {
               const {
                 interfaceName,
                 content,
-                outputDir = "EasyTsApi"
+                outputDir = "EasyTsApi",
+                createInCurrentDir = false,
+                currentFilePath = ""
               } = JSON.parse(body);
-              const srcDir = path.join(projectRoot, "src");
-              console.log("Src directory:", srcDir);
-              if (!fs.existsSync(srcDir)) {
-                throw new Error(`src directory not found in ${projectRoot}`);
-              }
-              const fullOutputDir = path.join(srcDir, outputDir);
-              console.log("Output directory:", fullOutputDir);
-              if (!fs.existsSync(fullOutputDir)) {
-                fs.mkdirSync(fullOutputDir, { recursive: true });
-              }
-              const filePath = path.join(fullOutputDir, `${interfaceName}.ts`);
-              fs.writeFileSync(filePath, content);
-              console.log("Type definition file:", filePath);
-              const indexPath = path.join(fullOutputDir, "index.ts");
-              const exportStatement = `export * from './${interfaceName}';
-`;
-              if (!fs.existsSync(indexPath)) {
-                fs.writeFileSync(
-                  indexPath,
-                  "// Auto-generated type definitions\n"
+              let targetDir;
+              let filePath;
+              if (createInCurrentDir && currentFilePath) {
+                targetDir = path.dirname(
+                  path.join(projectRoot, currentFilePath)
                 );
+                filePath = path.join(targetDir, `${interfaceName}.d.ts`);
+              } else {
+                const srcDir = path.join(projectRoot, "src");
+                if (!fs.existsSync(srcDir)) {
+                  throw new Error(`src directory not found in ${projectRoot}`);
+                }
+                targetDir = path.join(srcDir, outputDir);
+                filePath = path.join(targetDir, `${interfaceName}.ts`);
               }
-              const indexContent = fs.readFileSync(indexPath, "utf-8");
-              if (!indexContent.includes(exportStatement)) {
-                fs.appendFileSync(indexPath, exportStatement);
+              if (!fs.existsSync(targetDir)) {
+                fs.mkdirSync(targetDir, { recursive: true });
               }
-              const relativePath = path.relative(srcDir, filePath);
-              console.log(`\u2728 Generated type definition: src/${relativePath}`);
+              fs.writeFileSync(filePath, content);
+              if (!createInCurrentDir) {
+                const indexPath = path.join(targetDir, "index.ts");
+                const exportStatement = `export * from './${interfaceName}';
+`;
+                if (!fs.existsSync(indexPath)) {
+                  fs.writeFileSync(
+                    indexPath,
+                    "// Auto-generated type definitions\n"
+                  );
+                }
+                const indexContent = fs.readFileSync(indexPath, "utf-8");
+                if (!indexContent.includes(exportStatement)) {
+                  fs.appendFileSync(indexPath, exportStatement);
+                }
+              }
+              const relativePath = path.relative(projectRoot, filePath);
+              console.log(`\u2728 Generated type definition: ${relativePath}`);
               res.statusCode = 200;
               res.end(
                 JSON.stringify({
                   success: true,
-                  path: `src/${relativePath}`
+                  path: relativePath
                 })
               );
             } catch (error) {
