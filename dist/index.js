@@ -7,17 +7,28 @@ var EasyTs = class {
     this.outputDir = config.outputDir || "EasyTsApi";
   }
   /**
-   * 从API路径生成接口名称
+   * 从API路径生成接口名称（用作文件名）
+   * @param url API路径
+   * @param method 请求方法
+   * @returns 生成的接口名称
    */
-  generateInterfaceName(url) {
+  generateInterfaceName(url, method = "get") {
     const cleanUrl = url.split("?")[0];
     const parts = cleanUrl.split("/").filter(Boolean);
-    const name = parts.map(
-      (part) => part.split("-").map(
-        (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-      ).join("")
+    const processedParts = parts.map((part) => {
+      if (part.includes("${") || part.startsWith(":")) {
+        return "ById";
+      }
+      return part;
+    });
+    const meaningfulParts = processedParts.filter(
+      (part) => !["api", "v1", "v2", "v3"].includes(part.toLowerCase())
+    );
+    const lastParts = meaningfulParts.slice(-2);
+    const name = lastParts.map(
+      (part) => part.split("-").map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join("")
     ).join("");
-    return `I${name}Response`;
+    return `${method.toUpperCase()}${name}`;
   }
   /**
    * 根据传入的数据生成 TypeScript 接口定义
@@ -56,16 +67,17 @@ var EasyTs = class {
           return "boolean";
         case "object": {
           seen.add(value);
-          const subInterfaceName = `I${name}`;
+          const subInterfaceName = name.charAt(0).toUpperCase() + name.slice(1);
           if (Object.keys(value).length > 0) {
             const properties = Object.entries(value).map(([key, val]) => {
               const propType = generateType(
                 val,
-                `${name}${key.charAt(0).toUpperCase()}${key.slice(1)}`
+                key
+                // 直接使用字段名作为子接口的名称基础
               );
               return `  ${key}: ${propType};`;
             }).join("\n");
-            if (name !== interfaceName.replace(/^I/, "")) {
+            if (name !== "data") {
               interfaces.push(
                 `export interface ${subInterfaceName} {
 ${properties}
@@ -84,10 +96,7 @@ ${properties}
           return "any";
       }
     };
-    const mainInterface = `export interface ${interfaceName} ${generateType(
-      data,
-      interfaceName.replace(/^I/, "")
-    )}`;
+    const mainInterface = `export interface Data ${generateType(data, "data")}`;
     return [...interfaces, mainInterface].join("\n\n");
   }
   /**
@@ -122,7 +131,8 @@ ${properties}
       async (response) => {
         try {
           const interfaceName = this.generateInterfaceName(
-            response.config.url || ""
+            response.config.url || "",
+            response.config.method || "get"
           );
           const typeDefinition = this.generateTypeDefinition(
             response.data,

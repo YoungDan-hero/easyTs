@@ -34,23 +34,44 @@ class EasyTs {
   }
 
   /**
-   * 从API路径生成接口名称
+   * 从API路径生成接口名称（用作文件名）
+   * @param url API路径
+   * @param method 请求方法
+   * @returns 生成的接口名称
    */
-  private generateInterfaceName(url: string): string {
-    const cleanUrl = url.split("?")[0];
-    const parts = cleanUrl.split("/").filter(Boolean);
-    const name = parts
-      .map((part) =>
-        part
-          .split("-")
-          .map(
-            (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-          )
-          .join("")
-      )
-      .join("");
+  private generateInterfaceName(url: string, method: string = 'get'): string {
+    // 移除查询参数
+    const cleanUrl = url.split('?')[0];
+    
+    // 分割路径并过滤空值
+    const parts = cleanUrl.split('/').filter(Boolean);
+    
+    // 替换动态参数为通用标识符
+    const processedParts = parts.map(part => {
+      // 检测是否为动态参数 (例如: ${xxx} 或 :xxx)
+      if (part.includes('${') || part.startsWith(':')) {
+        return 'By' + 'Id';
+      }
+      return part;
+    });
 
-    return `I${name}Response`;
+    // 只取最后两个有意义的部分（排除api、v1等通用前缀）
+    const meaningfulParts = processedParts.filter(part => 
+      !['api', 'v1', 'v2', 'v3'].includes(part.toLowerCase())
+    );
+    
+    const lastParts = meaningfulParts.slice(-2);
+    
+    // 转换为驼峰命名
+    const name = lastParts.map((part) =>
+      part
+        .split('-')
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join('')
+    ).join('');
+
+    // 添加请求方法前缀，用于文件名
+    return `${method.toUpperCase()}${name}`;
   }
 
   /**
@@ -79,6 +100,7 @@ class EasyTs {
       if (value === null) return "null";
       if (Array.isArray(value)) {
         if (value.length === 0) return "any[]";
+        // 对于数组，使用Item后缀
         const itemType = generateType(value[0], `${name}Item`);
         return `${itemType}[]`;
       }
@@ -92,7 +114,9 @@ class EasyTs {
           return "boolean";
         case "object": {
           seen.add(value);
-          const subInterfaceName = `I${name}`;
+          
+          // 直接使用字段名作为接口名称，首字母大写
+          const subInterfaceName = name.charAt(0).toUpperCase() + name.slice(1);
 
           // 为复杂对象生成子接口
           if (Object.keys(value).length > 0) {
@@ -100,14 +124,14 @@ class EasyTs {
               .map(([key, val]) => {
                 const propType = generateType(
                   val,
-                  `${name}${key.charAt(0).toUpperCase()}${key.slice(1)}`
+                  key // 直接使用字段名作为子接口的名称基础
                 );
                 return `  ${key}: ${propType};`;
               })
               .join("\n");
 
             // 只有当对象有属性时才生成子接口
-            if (name !== interfaceName.replace(/^I/, "")) {
+            if (name !== 'data') { // 修改这里，检查是否为主接口
               interfaces.push(
                 `export interface ${subInterfaceName} {\n${properties}\n}`
               );
@@ -123,10 +147,8 @@ class EasyTs {
       }
     };
 
-    const mainInterface = `export interface ${interfaceName} ${generateType(
-      data,
-      interfaceName.replace(/^I/, "")
-    )}`;
+    // 主接口统一命名为 Data
+    const mainInterface = `export interface Data ${generateType(data, 'data')}`;
 
     // 返回所有生成的接口定义，包括子接口
     return [...interfaces, mainInterface].join("\n\n");
@@ -169,7 +191,8 @@ class EasyTs {
       async (response: AxiosResponse) => {
         try {
           const interfaceName = this.generateInterfaceName(
-            response.config.url || ""
+            response.config.url || '',
+            response.config.method || 'get'
           );
           const typeDefinition = this.generateTypeDefinition(
             response.data,
@@ -181,7 +204,7 @@ class EasyTs {
             this.typeCache.add(interfaceName);
           }
         } catch (error) {
-          console.error("EasyTs: Error generating type definition:", error);
+          console.error('EasyTs: Error generating type definition:', error);
         }
         return response;
       },

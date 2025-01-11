@@ -21,7 +21,10 @@ declare class EasyTs {
     private outputDir;
     constructor(config?: EasyTsConfig);
     /**
-     * 从API路径生成接口名称
+     * 从API路径生成接口名称（用作文件名）
+     * @param url API路径
+     * @param method 请求方法
+     * @returns 生成的接口名称
      */
     private generateInterfaceName;
     /**
