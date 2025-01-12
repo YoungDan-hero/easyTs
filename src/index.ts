@@ -94,7 +94,7 @@ class EasyTs {
     ).join('');
 
     // 添加请求方法前缀，用于文件名
-    return `${method.toUpperCase()}${name}`;
+    return `${name}${method.toUpperCase()}`;
   }
 
   /**
