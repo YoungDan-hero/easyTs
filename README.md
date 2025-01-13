@@ -51,6 +51,47 @@ const easyTs = createEasyTs({
   outputDir: "types/api", // 自定义输出目录
   axios: customAxios, // 自定义 axios 实例
 });
+
+// 项目实例
+
+import axios from "axios";
+import { createEasyTs } from "@kiko-yd/easyts";
+const TIMEOUT_DURATION: number = 150000;
+
+// 创建 Axios 实例
+const instance: AxiosInstance = axios.create({
+  timeout: TIMEOUT_DURATION,
+});
+// 高级配置
+const easyTs = createEasyTs({
+  outputDir: "Interface", // 自定义输出目录
+  axios: instance, // 自定义 axios 实例
+});
+
+easyTs.start();
+
+// 请求拦截器
+instance.interceptors.request.use(
+  (
+    config: InternalAxiosRequestConfig<any>
+  ): InternalAxiosRequestConfig<any> => {
+    return config;
+  },
+  (error: AxiosError) => Promise.reject(error)
+);
+
+// 响应拦截器
+instance.interceptors.response.use(
+  (response: AxiosResponse): Promise<any> | AxiosResponse | any => {
+    return response.data;
+  },
+  (error) => {
+    const { response } = error;
+    return Promise.reject(error);
+  }
+);
+
+export default instance;
 ```
 
 使用场景：
