@@ -46,7 +46,7 @@ class EasyTs {
   private hasDataChanged(interfaceName: string, newData: any): boolean {
     const newHash = this.calculateHash(newData);
     const oldHash = this.typeCache.get(interfaceName);
-    
+
     if (oldHash !== newHash) {
       this.typeCache.set(interfaceName, newHash);
       return true;
@@ -60,40 +60,49 @@ class EasyTs {
    * @param method 请求方法
    * @returns 生成的接口名称
    */
-  private generateInterfaceName(url: string, method: string = 'get'): string {
+  private generateInterfaceName(url: string, method: string = "get"): string {
     // 移除查询参数
-    const cleanUrl = url.split('?')[0];
-    
+    const cleanUrl = url.split("?")[0];
+
     // 分割路径并过滤空值
-    const parts = cleanUrl.split('/').filter(Boolean);
-    
+    const parts = cleanUrl.split("/").filter(Boolean);
+
     // 替换动态参数为通用标识符
-    const processedParts = parts.map(part => {
+    const processedParts = parts.map((part) => {
       // 检测是否为动态参数 (例如: ${xxx} 或 :xxx 或纯数字)
-      if (part.includes('${') || 
-          part.startsWith(':') || 
-          /^\d+$/.test(part)) {  // 添加对纯数字的检测
-        return 'ById';
+      if (part.includes("${") || part.startsWith(":") || /^\d+$/.test(part)) {
+        // 添加对纯数字的检测
+        return "ById";
       }
       return part;
     });
 
     // 只取最后两个有意义的部分（排除api、v1等通用前缀）
-    const meaningfulParts = processedParts.filter(part => 
-      !['api', 'v1', 'v2', 'v3'].includes(part.toLowerCase())
+    const meaningfulParts = processedParts.filter(
+      (part) => !["api", "v1", "v2", "v3"].includes(part.toLowerCase())
     );
-    
-    const lastParts = meaningfulParts.slice(-2);
-    
-    // 转换为驼峰命名
-    const name = lastParts.map((part) =>
-      part
-        .split('-')
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-        .join('')
-    ).join('');
 
-    // 添加请求方法前缀，用于文件名
+    const lastParts = meaningfulParts.slice(-2);
+
+    // 改进的驼峰命名转换
+    const name = lastParts
+      .map((part) => {
+        // 1. 先将已经是驼峰形式的词拆分
+        const words = part.split(/(?=[A-Z])/).map((word) => word.toLowerCase());
+
+        // 2. 处理可能包含连字符的情况
+        const allWords = words.flatMap((word) => word.split("-"));
+
+        // 3. 将所有单词转换为首字母大写形式
+        return allWords
+          .map(
+            (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+          )
+          .join("");
+      })
+      .join("");
+
+    // 添加请求方法后缀
     return `${name}${method.toUpperCase()}`;
   }
 
@@ -137,7 +146,7 @@ class EasyTs {
           return "boolean";
         case "object": {
           seen.add(value);
-          
+
           // 直接使用字段名作为接口名称，首字母大写
           const subInterfaceName = name.charAt(0).toUpperCase() + name.slice(1);
 
@@ -154,7 +163,8 @@ class EasyTs {
               .join("\n");
 
             // 只有当对象有属性时才生成子接口
-            if (name !== 'data') { // 修改这里，检查是否为主接口
+            if (name !== "data") {
+              // 修改这里，检查是否为主接口
               interfaces.push(
                 `export interface ${subInterfaceName} {\n${properties}\n}`
               );
@@ -171,7 +181,7 @@ class EasyTs {
     };
 
     // 主接口统一命名为 Data
-    const mainInterface = `export interface Data ${generateType(data, 'data')}`;
+    const mainInterface = `export interface Data ${generateType(data, "data")}`;
 
     // 返回所有生成的接口定义，包括子接口
     return [...interfaces, mainInterface].join("\n\n");
@@ -214,21 +224,26 @@ class EasyTs {
       async (response: AxiosResponse) => {
         try {
           const interfaceName = this.generateInterfaceName(
-            response.config.url || '',
-            response.config.method || 'get'
+            response.config.url || "",
+            response.config.method || "get"
           );
-          
+
           // 检查数据是否发生变化
-          if (!this.typeCache.has(interfaceName) || this.hasDataChanged(interfaceName, response.data)) {
+          if (
+            !this.typeCache.has(interfaceName) ||
+            this.hasDataChanged(interfaceName, response.data)
+          ) {
             const typeDefinition = this.generateTypeDefinition(
               response.data,
               interfaceName
             );
             await this.saveTypeDefinition(interfaceName, typeDefinition);
-            console.log(`[EasyTs] Updated type definition for ${interfaceName}`);
+            console.log(
+              `[EasyTs] Updated type definition for ${interfaceName}`
+            );
           }
         } catch (error) {
-          console.error('EasyTs: Error generating type definition:', error);
+          console.error("EasyTs: Error generating type definition:", error);
         }
         return response;
       },
@@ -242,16 +257,22 @@ class EasyTs {
    * @param method 请求方法
    * @param data 接口返回数据
    */
-  public async forceUpdate(url: string, method: string = 'get', data: any): Promise<void> {
+  public async forceUpdate(
+    url: string,
+    method: string = "get",
+    data: any
+  ): Promise<void> {
     try {
       const interfaceName = this.generateInterfaceName(url, method);
       const typeDefinition = this.generateTypeDefinition(data, interfaceName);
       await this.saveTypeDefinition(interfaceName, typeDefinition);
       // 更新缓存
       this.typeCache.set(interfaceName, this.calculateHash(data));
-      console.log(`[EasyTs] Force updated type definition for ${interfaceName}`);
+      console.log(
+        `[EasyTs] Force updated type definition for ${interfaceName}`
+      );
     } catch (error) {
-      console.error('EasyTs: Error force updating type definition:', error);
+      console.error("EasyTs: Error force updating type definition:", error);
       throw error;
     }
   }

@@ -80,9 +80,13 @@ var EasyTs = class {
       (part) => !["api", "v1", "v2", "v3"].includes(part.toLowerCase())
     );
     const lastParts = meaningfulParts.slice(-2);
-    const name = lastParts.map(
-      (part) => part.split("-").map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join("")
-    ).join("");
+    const name = lastParts.map((part) => {
+      const words = part.split(/(?=[A-Z])/).map((word) => word.toLowerCase());
+      const allWords = words.flatMap((word) => word.split("-"));
+      return allWords.map(
+        (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+      ).join("");
+    }).join("");
     return `${name}${method.toUpperCase()}`;
   }
   /**
@@ -195,7 +199,9 @@ ${properties}
               interfaceName
             );
             await this.saveTypeDefinition(interfaceName, typeDefinition);
-            console.log(`[EasyTs] Updated type definition for ${interfaceName}`);
+            console.log(
+              `[EasyTs] Updated type definition for ${interfaceName}`
+            );
           }
         } catch (error) {
           console.error("EasyTs: Error generating type definition:", error);
@@ -217,7 +223,9 @@ ${properties}
       const typeDefinition = this.generateTypeDefinition(data, interfaceName);
       await this.saveTypeDefinition(interfaceName, typeDefinition);
       this.typeCache.set(interfaceName, this.calculateHash(data));
-      console.log(`[EasyTs] Force updated type definition for ${interfaceName}`);
+      console.log(
+        `[EasyTs] Force updated type definition for ${interfaceName}`
+      );
     } catch (error) {
       console.error("EasyTs: Error force updating type definition:", error);
       throw error;
