@@ -160,7 +160,7 @@ export interface IGeneratedInterface {
 EasyTs 提供了两个实用的类型工具，用于重写或扩展自动生成的接口类型：
 
 ```typescript
-import { OverrideField, ExtendField } from "@kiko-yd/easyts";
+import type { OverrideField, ExtendField } from "@kiko-yd/easyts";
 
 // 假设自动生成的接口如下：
 interface UserData {

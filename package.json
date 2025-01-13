@@ -1,6 +1,6 @@
 {
   "name": "@kiko-yd/easyts",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Automatic TypeScript interface generator for Vue3 projects",
   "type": "module",
   "main": "./dist/index.js",
