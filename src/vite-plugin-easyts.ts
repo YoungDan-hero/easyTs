@@ -63,24 +63,6 @@ export function vitePluginEasyTs(): Plugin {
               // 保存类型定义文件
               fs.writeFileSync(filePath, content);
 
-              // 只有在非当前目录模式下才更新 index.ts
-              if (!createInCurrentDir) {
-                const indexPath = path.join(targetDir, "index.ts");
-                const exportStatement = `export * from './${interfaceName}';\n`;
-
-                if (!fs.existsSync(indexPath)) {
-                  fs.writeFileSync(
-                    indexPath,
-                    "// Auto-generated type definitions\n"
-                  );
-                }
-
-                const indexContent = fs.readFileSync(indexPath, "utf-8");
-                if (!indexContent.includes(exportStatement)) {
-                  fs.appendFileSync(indexPath, exportStatement);
-                }
-              }
-
               const relativePath = path.relative(projectRoot, filePath);
               console.log(`✨ Generated type definition: ${relativePath}`);
 

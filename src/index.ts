@@ -23,6 +23,43 @@ export type Type<T> = {
     : T[K];
 };
 
+/**
+ * 用于重写接口中特定字段类型的工具类型
+ * @template T 原始接口类型
+ * @template K 要重写的字段名
+ * @template R 新的字段类型
+ */
+export type OverrideField<T, K extends keyof T, R> = Omit<T, K> & {
+  [P in K]: R;
+};
+
+/**
+ * 用于扩展接口中特定字段类型的工具类型（联合类型）
+ * @template T 原始接口类型
+ * @template K 要扩展的字段名
+ * @template R 要添加的类型
+ */
+export type ExtendField<T, K extends keyof T, R> = Omit<T, K> & {
+  [P in K]: T[P] | R;
+};
+
+// 示例注释，说明如何使用这些工具类型
+/**
+ * 类型重写示例：
+ *
+ * // 原始生成的接口
+ * interface UserData {
+ *   id: number;
+ *   name: string;
+ * }
+ *
+ * // 重写 id 字段类型
+ * type UserDataWithStringId = OverrideField<UserData, 'id', string>;
+ *
+ * // 扩展 id 字段类型（支持 number 和 string）
+ * type UserDataWithExtendedId = ExtendField<UserData, 'id', string>;
+ */
+
 class EasyTs {
   private axios: AxiosInstance;
   private typeCache: Map<string, string> = new Map();

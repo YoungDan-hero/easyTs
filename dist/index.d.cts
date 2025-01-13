@@ -15,6 +15,39 @@ interface EasyTsConfig {
 type Type<T> = {
     [K in keyof T]: T[K] extends Array<infer U> ? Array<Type<U>> : T[K] extends object ? Type<T[K]> : T[K];
 };
+/**
+ * 用于重写接口中特定字段类型的工具类型
+ * @template T 原始接口类型
+ * @template K 要重写的字段名
+ * @template R 新的字段类型
+ */
+type OverrideField<T, K extends keyof T, R> = Omit<T, K> & {
+    [P in K]: R;
+};
+/**
+ * 用于扩展接口中特定字段类型的工具类型（联合类型）
+ * @template T 原始接口类型
+ * @template K 要扩展的字段名
+ * @template R 要添加的类型
+ */
+type ExtendField<T, K extends keyof T, R> = Omit<T, K> & {
+    [P in K]: T[P] | R;
+};
+/**
+ * 类型重写示例：
+ *
+ * // 原始生成的接口
+ * interface UserData {
+ *   id: number;
+ *   name: string;
+ * }
+ *
+ * // 重写 id 字段类型
+ * type UserDataWithStringId = OverrideField<UserData, 'id', string>;
+ *
+ * // 扩展 id 字段类型（支持 number 和 string）
+ * type UserDataWithExtendedId = ExtendField<UserData, 'id', string>;
+ */
 declare class EasyTs {
     private axios;
     private typeCache;
@@ -96,4 +129,4 @@ declare function createTypeDefinition(interfaceString: string, fileName?: string
  */
 declare function createTypeInCurrentDir(data: any, fileName: string, filePath: string): Promise<string>;
 
-export { Type, createEasyTs, createTypeDefinition, createTypeInCurrentDir, getInterface };
+export { ExtendField, OverrideField, Type, createEasyTs, createTypeDefinition, createTypeInCurrentDir, getInterface };

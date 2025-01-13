@@ -155,6 +155,59 @@ export interface IGeneratedInterface {
 - 临时生成接口定义
 - 作为其他类型生成函数的基础
 
+### 5. 类型重写与扩展
+
+EasyTs 提供了两个实用的类型工具，用于重写或扩展自动生成的接口类型：
+
+```typescript
+import { OverrideField, ExtendField } from "@kiko-yd/easyts";
+
+// 假设自动生成的接口如下：
+interface UserData {
+  id: number;
+  name: string;
+  age: number;
+}
+
+// 1. 完全重写字段类型
+type UserWithStringId = OverrideField<UserData, "id", string>;
+// 结果：
+// {
+//   id: string;  // 类型被完全重写为 string
+//   name: string;
+//   age: number;
+// }
+
+// 2. 扩展字段类型（联合类型）
+type UserWithFlexibleId = ExtendField<UserData, "id", string>;
+// 结果：
+// {
+//   id: number | string;  // 原类型与新类型的联合
+//   name: string;
+//   age: number;
+// }
+
+// 3. 链式修改多个字段
+type CustomUser = ExtendField<
+  ExtendField<UserData, "id", string>,
+  "age",
+  string
+>;
+// 结果：
+// {
+//   id: number | string;
+//   name: string;
+//   age: number | string;
+// }
+```
+
+使用场景：
+
+- API 返回的字段类型需要适配多种格式
+- 需要扩展某些字段的类型范围
+- 需要完全重写特定字段的类型
+- 处理后端返回类型与前端实际使用类型不完全匹配的情况
+
 ## 🌰 最佳实践
 
 ### 1. API 请求类型生成
@@ -198,6 +251,8 @@ import type { IGeneratedInterface as UserCardProps } from "./UserCardTypes";
 3. 生成的类型文件建议加入版本控制
 4. 使用自定义 axios 实例时，确保在 `start()` 前完成配置
 5. 类型文件名避免使用特殊字符
+6. 使用类型重写工具时，确保字段名称完全匹配
+7. 类型重写不会影响原始生成的类型文件，只在使用时生效
 
 ## 🤝 贡献
 

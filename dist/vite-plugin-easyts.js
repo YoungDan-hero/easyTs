@@ -41,21 +41,6 @@ function vitePluginEasyTs() {
                 fs.mkdirSync(targetDir, { recursive: true });
               }
               fs.writeFileSync(filePath, content);
-              if (!createInCurrentDir) {
-                const indexPath = path.join(targetDir, "index.ts");
-                const exportStatement = `export * from './${interfaceName}';
-`;
-                if (!fs.existsSync(indexPath)) {
-                  fs.writeFileSync(
-                    indexPath,
-                    "// Auto-generated type definitions\n"
-                  );
-                }
-                const indexContent = fs.readFileSync(indexPath, "utf-8");
-                if (!indexContent.includes(exportStatement)) {
-                  fs.appendFileSync(indexPath, exportStatement);
-                }
-              }
               const relativePath = path.relative(projectRoot, filePath);
               console.log(`\u2728 Generated type definition: ${relativePath}`);
               res.statusCode = 200;
