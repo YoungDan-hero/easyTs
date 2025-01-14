@@ -37,20 +37,58 @@ export class EasyTs {
 
   /**
    * 计算数据的哈希值，用于检测变化
+   * 规范化数据以确保相同的数据结构产生相同的哈希值
    */
   private calculateHash(data: any): string {
-    return JSON.stringify(data);
+    // 规范化数据：排序对象的键以确保一致性
+    const normalizeData = (obj: any): any => {
+      if (obj === null || typeof obj !== "object") {
+        return obj;
+      }
+
+      if (Array.isArray(obj)) {
+        return obj.map(normalizeData);
+      }
+
+      // 对对象的键进行排序
+      return Object.keys(obj)
+        .sort()
+        .reduce((result: any, key: string) => {
+          result[key] = normalizeData(obj[key]);
+          return result;
+        }, {});
+    };
+
+    return JSON.stringify(normalizeData(data));
   }
 
   /**
    * 检查数据是否发生变化
+   * 使用本地存储来持久化哈希值，避免重启丢失
    */
   private hasDataChanged(interfaceName: string, newData: any): boolean {
     const newHash = this.calculateHash(newData);
+    const cacheKey = `easyts_hash_${interfaceName}`;
+
+    // 先检查内存缓存
     const oldHash = this.typeCache.get(interfaceName);
 
-    if (oldHash !== newHash) {
+    // 如果内存中没有，尝试从 localStorage 获取
+    if (!oldHash && typeof window !== "undefined") {
+      const storedHash = localStorage.getItem(cacheKey);
+      if (storedHash) {
+        this.typeCache.set(interfaceName, storedHash);
+      }
+    }
+
+    const finalOldHash = this.typeCache.get(interfaceName);
+
+    if (finalOldHash !== newHash) {
       this.typeCache.set(interfaceName, newHash);
+      // 同时更新本地存储
+      if (typeof window !== "undefined") {
+        localStorage.setItem(cacheKey, newHash);
+      }
       return true;
     }
     return false;
