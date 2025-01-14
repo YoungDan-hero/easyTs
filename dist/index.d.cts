@@ -34,6 +34,31 @@ type ExtendField<T, K extends keyof T, R> = Omit<T, K> & {
     [P in K]: T[P] | R;
 };
 /**
+ * 用于一次性修改多个字段类型的工具类型
+ * @template T 原始接口类型
+ * @template M 要修改的字段及其新类型的映射
+ *
+ * @example
+ * interface User {
+ *   id: number;
+ *   name: string;
+ *   age: number;
+ *   roles: string[];
+ * }
+ *
+ * // 一次性修改多个字段类型
+ * type CustomUser = ModifyFields<User, {
+ *   id: string;          // 完全重写为string
+ *   age: string | number; // 扩展为联合类型
+ *   roles: number[];     // 修改数组元素类型
+ * }>;
+ */
+type ModifyFields<T, M extends {
+    [K in keyof M]: any;
+}> = Omit<T, keyof M> & {
+    [K in keyof M]: M[K];
+};
+/**
  * 类型重写示例：
  *
  * // 原始生成的接口
@@ -129,4 +154,4 @@ declare function createTypeDefinition(interfaceString: string, fileName?: string
  */
 declare function createTypeInCurrentDir(data: any, fileName: string, filePath: string): Promise<string>;
 
-export { ExtendField, OverrideField, Type, createEasyTs, createTypeDefinition, createTypeInCurrentDir, getInterface };
+export { ExtendField, ModifyFields, OverrideField, Type, createEasyTs, createTypeDefinition, createTypeInCurrentDir, getInterface };
