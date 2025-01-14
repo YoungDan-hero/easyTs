@@ -193,48 +193,58 @@ export interface IGeneratedInterface {
 
 ### 5. 类型重写与扩展
 
-EasyTs 提供了两个实用的类型工具，用于重写或扩展自动生成的接口类型：
+EasyTs 提供了三个实用的类型工具，用于重写或扩展自动生成的接口类型：
 
 ```typescript
-import type { OverrideField, ExtendField } from "@kiko-yd/easyts";
+import type { OverrideField, ExtendField, ModifyFields } from "@kiko-yd/easyts";
 
 // 假设自动生成的接口如下：
 interface UserData {
   id: number;
   name: string;
   age: number;
+  roles: string[];
+  profile: {
+    avatar: string;
+    bio: string;
+  };
 }
 
-// 1. 完全重写字段类型
+// 1. 完全重写单个字段类型
 type UserWithStringId = OverrideField<UserData, "id", string>;
 // 结果：
 // {
 //   id: string;  // 类型被完全重写为 string
 //   name: string;
 //   age: number;
+//   ...
 // }
 
-// 2. 扩展字段类型（联合类型）
+// 2. 扩展单个字段类型（联合类型）
 type UserWithFlexibleId = ExtendField<UserData, "id", string>;
 // 结果：
 // {
 //   id: number | string;  // 原类型与新类型的联合
 //   name: string;
 //   age: number;
+//   ...
 // }
 
-// 3. 链式修改多个字段
-type CustomUser = ExtendField<
-  ExtendField<UserData, "id", string>,
-  "age",
-  string
+// 3. 一次性修改多个字段类型（推荐）
+type CustomUser = ModifyFields<
+  UserData,
+  {
+    id: string; // 完全重写为string
+    age: string | number; // 使用联合类型
+    roles: number[]; // 修改数组元素类型
+    profile: {
+      // 重写嵌套对象类型
+      avatar: string;
+      bio: string;
+      socialLinks: string[]; // 添加新字段
+    };
+  }
 >;
-// 结果：
-// {
-//   id: number | string;
-//   name: string;
-//   age: number | string;
-// }
 ```
 
 使用场景：
@@ -243,6 +253,7 @@ type CustomUser = ExtendField<
 - 需要扩展某些字段的类型范围
 - 需要完全重写特定字段的类型
 - 处理后端返回类型与前端实际使用类型不完全匹配的情况
+- 需要批量修改多个字段类型时，使用 `ModifyFields`
 
 ## 🌰 最佳实践
 
