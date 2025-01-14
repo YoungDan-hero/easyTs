@@ -22,95 +22,47 @@ interface EasyTsConfig {
 }
 
 // 全局缓存，确保在多个实例间共享
-const globalTypeCache = new Map<string, string>();
-
-// LRU 缓存实现
-class LRUStorage {
+class TypeCache {
+  private cache: Map<string, { hash: string; timestamp: number }>;
   private maxItems: number;
-  private cache: Map<string, { value: string; timestamp: number }>;
 
   constructor(maxItems: number = 100) {
-    this.maxItems = maxItems;
     this.cache = new Map();
-    this.loadFromStorage();
+    this.maxItems = maxItems;
   }
 
-  private loadFromStorage(): void {
-    if (typeof window === "undefined") return;
-
-    try {
-      const data = localStorage.getItem("easyts_cache");
-      if (data) {
-        const parsed = JSON.parse(data);
-        Object.entries(parsed).forEach(([key, entry]) => {
-          this.cache.set(key, entry as { value: string; timestamp: number });
-        });
-      }
-    } catch (error) {
-      console.warn("[EasyTs] Failed to load cache from storage:", error);
+  get(key: string): string | undefined {
+    const item = this.cache.get(key);
+    if (item) {
+      // 更新访问时间
+      item.timestamp = Date.now();
+      return item.hash;
     }
+    return undefined;
   }
 
-  private saveToStorage(): void {
-    if (typeof window === "undefined") return;
-
-    try {
-      // 转换为普通对象
-      const data = Object.fromEntries(this.cache.entries());
-      localStorage.setItem("easyts_cache", JSON.stringify(data));
-    } catch (error) {
-      console.warn("[EasyTs] Failed to save cache to storage:", error);
-      // 存储失败时，清理一半的缓存项
-      this.cleanup(Math.floor(this.cache.size / 2));
-    }
-  }
-
-  private cleanup(count: number = 1): void {
-    // 按时间戳排序，删除最旧的项
-    const entries = Array.from(this.cache.entries()).sort(
-      ([, a], [, b]) => a.timestamp - b.timestamp
-    );
-
-    for (let i = 0; i < count && i < entries.length; i++) {
-      this.cache.delete(entries[i][0]);
-    }
-
-    // 尝试重新保存
-    this.saveToStorage();
-  }
-
-  get(key: string): string | null {
-    const entry = this.cache.get(key);
-    if (!entry) return null;
-
-    // 更新访问时间
-    entry.timestamp = Date.now();
-    this.cache.set(key, entry);
-    return entry.value;
-  }
-
-  set(key: string, value: string): void {
-    // 如果达到最大项数，清理最旧的一项
+  set(key: string, hash: string): void {
+    // 如果达到最大数量，删除最旧的项
     if (this.cache.size >= this.maxItems) {
-      this.cleanup(1);
+      const entries = Array.from(this.cache.entries()).sort(
+        ([, a], [, b]) => a.timestamp - b.timestamp
+      );
+      this.cache.delete(entries[0][0]); // 删除最旧的一项
     }
 
     this.cache.set(key, {
-      value,
+      hash,
       timestamp: Date.now(),
     });
+  }
 
-    try {
-      this.saveToStorage();
-    } catch (error) {
-      console.warn("[EasyTs] Failed to save to storage:", error);
-      this.cleanup(Math.floor(this.cache.size / 2));
-    }
+  has(key: string): boolean {
+    return this.cache.has(key);
   }
 }
 
-// 创建全局 LRU 缓存实例
-const lruStorage = new LRUStorage(100);
+// 创建全局缓存实例
+const globalTypeCache = new TypeCache(100);
 
 export class EasyTs {
   private static instance: EasyTs;
@@ -170,29 +122,10 @@ export class EasyTs {
    */
   private hasDataChanged(interfaceName: string, newData: any): boolean {
     const newHash = this.calculateHash(newData);
-    const cacheKey = `easyts_hash_${interfaceName}`;
-
-    // 先从全局缓存中获取
     const oldHash = globalTypeCache.get(interfaceName);
 
-    // 如果全局缓存中没有，尝试从 LRU 缓存获取
-    if (!oldHash) {
-      const storedHash = lruStorage.get(cacheKey);
-      if (storedHash) {
-        globalTypeCache.set(interfaceName, storedHash);
-      }
-    }
-
-    const finalOldHash = globalTypeCache.get(interfaceName);
-
-    if (finalOldHash !== newHash) {
+    if (oldHash !== newHash) {
       globalTypeCache.set(interfaceName, newHash);
-      // 同时更新 LRU 缓存
-      try {
-        lruStorage.set(cacheKey, newHash);
-      } catch (error) {
-        console.warn("[EasyTs] Failed to update cache:", error);
-      }
       console.log(
         `[EasyTs] Cache miss for ${interfaceName}, regenerating types`
       );
