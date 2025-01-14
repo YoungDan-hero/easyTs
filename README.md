@@ -33,6 +33,99 @@ export default defineConfig({
 });
 ```
 
+## 🔨 环境区分
+
+EasyTs 针对不同环境提供了智能的功能区分。这种区分的目的是：
+
+1. **优化生产环境性能**
+
+   - 在生产环境中，类型生成和文件操作是完全不必要的，因为 TypeScript 类型仅在开发和编译时使用
+   - 禁用这些功能可以减少不必要的文件 I/O 操作和内存使用
+   - 避免在生产环境中生成大量临时文件
+
+2. **保持代码整洁**
+
+   - 类型定义文件应该在开发阶段生成并提交到版本控制
+   - 避免在生产环境中出现重复或冗余的类型文件
+   - 保持项目结构的清晰和可维护性
+
+3. **类型工具不受影响**
+   - 像 `ModifyFields`、`ExtendField` 这样的类型工具在编译时使用
+   - 这些工具不会产生运行时开销，因此在所有环境中都可用
+   - 确保在生产环境中仍然可以使用类型扩展和重写功能
+
+### 开发环境
+
+在开发环境中，EasyTs 提供完整功能：
+
+- ✅ 自动类型生成
+- ✅ 类型文件管理
+- ✅ 类型工具使用
+- ✅ API 响应拦截
+
+```typescript
+import { createEasyTs } from "@kiko-yd/easyts";
+
+// 开发环境下默认启用所有功能
+const easyTs = createEasyTs();
+easyTs.start();
+
+// 或者显式启用
+const easyTs = createEasyTs({
+  enableTypeGeneration: true,
+  outputDir: "types/api",
+});
+```
+
+### 生产环境
+
+在生产环境中，EasyTs 自动禁用类型生成相关功能，只保留类型工具：
+
+- ❌ 自动类型生成（禁用）
+- ❌ 类型文件管理（禁用）
+- ✅ 类型工具使用（可用）
+- ✅ API 响应拦截（可用）
+
+```typescript
+import { createEasyTs, ModifyFields } from "@kiko-yd/easyts";
+
+// 生产环境下自动禁用类型生成
+const easyTs = createEasyTs();
+
+// 类型工具在所有环境中可用
+type CustomUser = ModifyFields<
+  UserData,
+  {
+    id: string;
+    age: string | number;
+  }
+>;
+```
+
+### 配置选项
+
+```typescript
+interface EasyTsConfig {
+  /**
+   * 输出目录，相对于项目的src目录
+   * 默认为 'EasyTsApi'
+   */
+  outputDir?: string;
+
+  /**
+   * 可选的 axios 实例
+   * 如果不提供，将创建一个新的实例
+   */
+  axios?: AxiosInstance;
+
+  /**
+   * 是否启用类型生成功能
+   * 默认在开发环境下启用，生产环境下禁用
+   */
+  enableTypeGeneration?: boolean;
+}
+```
+
 ## 🔨 核心功能
 
 ### 1. createEasyTs
@@ -300,6 +393,10 @@ import type { IGeneratedInterface as UserCardProps } from "./UserCardTypes";
 5. 类型文件名避免使用特殊字符
 6. 使用类型重写工具时，确保字段名称完全匹配
 7. 类型重写不会影响原始生成的类型文件，只在使用时生效
+8. 类型生成功能（如 `createTypeDefinition`、`createTypeInCurrentDir`）仅在开发环境可用
+9. 生产环境中调用类型生成功能会收到警告并安全返回空字符串
+10. 类型工具（如 `ModifyFields`、`ExtendField`）在所有环境中可用
+11. 可以通过 `enableTypeGeneration` 配置手动控制类型生成功能的启用状态
 
 ## 🤝 贡献
 
