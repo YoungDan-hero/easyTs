@@ -21,26 +21,42 @@ interface EasyTsConfig {
   enableTypeGeneration?: boolean;
 }
 
+// 全局缓存，确保在多个实例间共享
+const globalTypeCache = new Map<string, string>();
+
 export class EasyTs {
-  private axios: AxiosInstance;
-  private typeCache: Map<string, string> = new Map();
-  private outputDir: string;
-  private enableTypeGeneration: boolean;
+  private static instance: EasyTs;
+  private axios: AxiosInstance = axios.create();
+  private outputDir: string = "EasyTsApi";
+  private enableTypeGeneration: boolean =
+    process.env.NODE_ENV === "development";
 
   constructor(config: EasyTsConfig = {}) {
-    this.axios = config.axios || axios.create();
-    this.outputDir = config.outputDir || "EasyTsApi";
-    // 默认在开发环境启用，生产环境禁用
+    // 如果已经有实例了，返回该实例
+    if (EasyTs.instance) {
+      Object.assign(EasyTs.instance, {
+        axios: config.axios || EasyTs.instance.axios,
+        outputDir: config.outputDir || EasyTs.instance.outputDir,
+        enableTypeGeneration:
+          config.enableTypeGeneration ?? EasyTs.instance.enableTypeGeneration,
+      });
+      return EasyTs.instance;
+    }
+
+    // 初始化实例属性
+    this.axios = config.axios || this.axios;
+    this.outputDir = config.outputDir || this.outputDir;
     this.enableTypeGeneration =
-      config.enableTypeGeneration ?? process.env.NODE_ENV === "development";
+      config.enableTypeGeneration ?? this.enableTypeGeneration;
+
+    // 保存实例
+    EasyTs.instance = this;
   }
 
   /**
    * 计算数据的哈希值，用于检测变化
-   * 规范化数据以确保相同的数据结构产生相同的哈希值
    */
   private calculateHash(data: any): string {
-    // 规范化数据：排序对象的键以确保一致性
     const normalizeData = (obj: any): any => {
       if (obj === null || typeof obj !== "object") {
         return obj;
@@ -50,7 +66,6 @@ export class EasyTs {
         return obj.map(normalizeData);
       }
 
-      // 对对象的键进行排序
       return Object.keys(obj)
         .sort()
         .reduce((result: any, key: string) => {
@@ -64,33 +79,39 @@ export class EasyTs {
 
   /**
    * 检查数据是否发生变化
-   * 使用本地存储来持久化哈希值，避免重启丢失
    */
   private hasDataChanged(interfaceName: string, newData: any): boolean {
     const newHash = this.calculateHash(newData);
     const cacheKey = `easyts_hash_${interfaceName}`;
 
-    // 先检查内存缓存
-    const oldHash = this.typeCache.get(interfaceName);
+    // 先从全局缓存中获取
+    const oldHash = globalTypeCache.get(interfaceName);
 
-    // 如果内存中没有，尝试从 localStorage 获取
+    // 如果全局缓存中没有，尝试从 localStorage 获取
     if (!oldHash && typeof window !== "undefined") {
       const storedHash = localStorage.getItem(cacheKey);
       if (storedHash) {
-        this.typeCache.set(interfaceName, storedHash);
+        globalTypeCache.set(interfaceName, storedHash);
       }
     }
 
-    const finalOldHash = this.typeCache.get(interfaceName);
+    const finalOldHash = globalTypeCache.get(interfaceName);
 
     if (finalOldHash !== newHash) {
-      this.typeCache.set(interfaceName, newHash);
+      globalTypeCache.set(interfaceName, newHash);
       // 同时更新本地存储
       if (typeof window !== "undefined") {
         localStorage.setItem(cacheKey, newHash);
       }
+      console.log(
+        `[EasyTs] Cache miss for ${interfaceName}, regenerating types`
+      );
       return true;
     }
+
+    console.log(
+      `[EasyTs] Cache hit for ${interfaceName}, skipping type generation`
+    );
     return false;
   }
 
@@ -245,10 +266,8 @@ export class EasyTs {
             response.config.method || "get"
           );
 
-          if (
-            !this.typeCache.has(interfaceName) ||
-            this.hasDataChanged(interfaceName, response.data)
-          ) {
+          // 检查数据是否发生变化
+          if (this.hasDataChanged(interfaceName, response.data)) {
             const typeDefinition = this.generateTypeDefinition(
               response.data,
               interfaceName
@@ -282,19 +301,21 @@ export class EasyTs {
   }
 }
 
+// 创建一个全局的单例实例
+const globalInstance = new EasyTs();
+
 /**
- * 创建EasyTs实例
+ * 创建或获取 EasyTs 实例
  */
 export const createEasyTs = (config?: EasyTsConfig): EasyTs => {
-  return new EasyTs(config);
+  return new EasyTs(config); // 会返回同一个实例
 };
 
 /**
  * 直接生成接口定义
  */
 export function getInterface(data: any): string {
-  const easyTs = new EasyTs({ enableTypeGeneration: true });
-  return easyTs.generateInterface(data);
+  return globalInstance.generateInterface(data); // 使用全局实例
 }
 
 /**
