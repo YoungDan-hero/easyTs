@@ -1,6 +1,6 @@
 # EasyTs
 
-一个为 TypeScript 项目设计的智能类型生成工具，可以自动拦截 API 响应并生成对应的 TypeScript 接口定义，极大提升开发效率。
+一个为 TypeScript 项目设计的智能类型生成工具，适用于 Vue3 + vite 项目，可以自动拦截 API 响应并生成对应的 TypeScript 接口定义，极大提升开发效率。
 
 ## ✨ 特性
 
